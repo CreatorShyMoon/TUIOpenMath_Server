@@ -1,0 +1,24 @@
+{
+  "name": "remote-scientific",
+  "description": "Комплексная научная среда (получено с сервера Open Math)",
+  "locked": false,
+  "python": [
+    "numpy",
+    "scipy",
+    "sympy",
+    "matplotlib",
+    "pandas",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia",
+    "Symbolics",
+    "Plots"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "julia",
+    "bash"
+  ]
+}

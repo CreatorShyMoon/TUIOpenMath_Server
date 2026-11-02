@@ -1,0 +1,22 @@
+{
+  "name": "remote-ml",
+  "description": "Среда машинного обучения и анализа данных (сервер)",
+  "locked": false,
+  "python": [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "matplotlib",
+    "seaborn",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "julia",
+    "bash"
+  ]
+}

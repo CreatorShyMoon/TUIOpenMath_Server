@@ -1,0 +1,39 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Executables and build artifacts
+manager
+*.o
+*.so
+*.dylib
+*.a
+*.tar.gz
+*.zip
+
+# Client distribution builds (managed as separate repo)
+dist/
+
+# Runtime directories and environments
+envs/*
+!envs/.gitkeep
+tools/*
+!tools/.gitkeep
+logs/*
+!logs/.gitkeep
+state/*
+!state/.gitkeep
+workspaces/*
+!workspaces/.gitkeep
+
+# Large server storage (mirrored binaries and wheels)
+server/storage/artifacts/*
+!server/storage/artifacts/.gitkeep
+server/storage/packages/*
+!server/storage/packages/.gitkeep
+server/__pycache__/
+*.pyc
+
+# Temporary scratch
+scratch/*
+!scratch/.gitkeep

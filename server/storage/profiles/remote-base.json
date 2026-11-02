@@ -1,0 +1,19 @@
+{
+  "name": "remote-base",
+  "description": "Базовый профиль для начала работы с платформой (сервер)",
+  "locked": false,
+  "python": [
+    "jupyterlab",
+    "matplotlib",
+    "numpy"
+  ],
+  "julia": [
+    "IJulia"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "julia",
+    "bash"
+  ]
+}

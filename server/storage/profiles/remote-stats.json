@@ -1,0 +1,22 @@
+{
+  "name": "remote-stats",
+  "description": "Среда статистического анализа и эконометрики (сервер)",
+  "locked": false,
+  "python": [
+    "numpy",
+    "pandas",
+    "scipy",
+    "statsmodels",
+    "seaborn",
+    "matplotlib",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "bash"
+  ]
+}

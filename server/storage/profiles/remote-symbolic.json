@@ -1,0 +1,20 @@
+{
+  "name": "remote-symbolic",
+  "description": "Символьная математика (получено с сервера Open Math)",
+  "locked": false,
+  "python": [
+    "sympy",
+    "matplotlib",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia",
+    "Symbolics"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "julia",
+    "bash"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "datascience",
+  "description": "Профиль анализа данных и визуализации (внешний динамический профиль)",
+  "locked": false,
+  "python": [
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia",
+    "DataFrames"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "julia",
+    "bash"
+  ]
+}

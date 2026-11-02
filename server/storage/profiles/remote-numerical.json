@@ -1,0 +1,23 @@
+{
+  "name": "remote-numerical",
+  "description": "Среда численных методов и вычислительной математики (сервер)",
+  "locked": false,
+  "python": [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia"
+  ],
+  "system": [
+    "octave"
+  ],
+  "kernels": [
+    "python",
+    "julia",
+    "bash",
+    "octave"
+  ]
+}

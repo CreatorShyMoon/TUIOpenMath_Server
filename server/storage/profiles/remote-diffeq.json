@@ -1,0 +1,24 @@
+{
+  "name": "remote-diffeq",
+  "description": "Среда дифференциальных уравнений: SciPy + Julia DifferentialEquations (сервер)",
+  "locked": false,
+  "python": [
+    "numpy",
+    "scipy",
+    "sympy",
+    "matplotlib",
+    "jupyterlab"
+  ],
+  "julia": [
+    "IJulia",
+    "DifferentialEquations",
+    "Plots",
+    "Symbolics"
+  ],
+  "system": [],
+  "kernels": [
+    "python",
+    "julia",
+    "bash"
+  ]
+}
