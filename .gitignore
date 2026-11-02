@@ -37,3 +37,10 @@ server/__pycache__/
 # Temporary scratch
 scratch/*
 !scratch/.gitkeep
+
+# Internal development notes, audit reports and patch drafts
+patch_*.md
+PATCH_NOTES.md
+audit_*.md
+SysOpenMath_Obsidian.md
+TUIopenMath_profile_format.md
