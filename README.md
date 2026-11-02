@@ -1,508 +1,208 @@
-# SysOpenMath / TUIopenMath
+# SysOpenMath Server (TUIOpenMath)
 
-## Управляемая математическая вычислительная платформа
+[![Language: C11](https://img.shields.io/badge/Language-C11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
+[![UI: ncurses](https://img.shields.io/badge/UI-ncursesw-green.svg)](https://invisible-island.net/ncurses/)
+[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![Kernels: Julia | Octave | Scilab | Python](https://img.shields.io/badge/Kernels-Julia%20%7C%20Octave%20%7C%20Scilab%20%7C%20Python-orange.svg)]()
+[![Network: Air--Gapped Offline](https://img.shields.io/badge/Network-Air--Gapped%20Offline-red.svg)]()
 
-SysOpenMath / TUIopenMath — это терминально-ориентированная система управления математической и научной вычислительной средой для Linux.
-
-Платформа реализована в форме текстового пользовательского интерфейса (TUI) на базе библиотеки `ncurses` и предназначена для централизованного управления вычислительными компонентами, Jupyter-средой и профильными workspace.
-
-Основная идея проекта заключается в переходе от ручной настройки вычисительных инструментов к модели управляемой вычислительной платформы.
-
-Пользователь взаимодействует не с отдельными пакетами и зависимостями, а с готовыми профилями вычислительной среды.
+> **Автономная клиент-серверная платформа и локальный репозиторий для математических и инженерных вычислений в изолированных сетях (Air-Gapped).**
 
 ---
 
-# Основные возможности
+## Оглавление
+- [1. Обзор платформы](#1-обзор-платформы)
+- [2. Архитектура системы](#2-архитектура-системы)
+- [3. Профильная модель вычислений](#3-профильная-модель-вычислений)
+- [4. Разграничение доступа (Студент vs Сервер)](#4-разграничение-доступа-студент-vs-сервер)
+- [5. Быстрый старт](#5-быстрый-старт)
+- [6. Горячие клавиши TUI](#6-горячие-клавиши-tui)
+- [7. Управление зеркалом и офлайн-сборками](#7-управление-зеркалом-и-офлайн-сборками)
+- [8. Структура проекта](#8-структура-проекта)
 
-## Профильная модель вычислительной среды
+---
 
-Система использует встроенные профили вычислительной среды.
+## 1. Обзор платформы
 
-Каждый профиль определяет:
+**SysOpenMath (TUIOpenMath)** решает ключевую проблему использования научных сред (Jupyter, Python, Julia, GNU Octave, Scilab) в условиях ограниченного или полностью отсутствующего интернета: в учебных компьютерных классах, на олимпиадах, режимных предприятиях и закрытых контурах.
 
-- Python-библиотеки;
-- Julia-пакеты;
-- kernels Jupyter;
-- системные зависимости;
-- параметры вычислительной среды.
+Вместо ручной сборки окружений и зависимости от внешних CDN (PyPI, AWS S3, Debian repos):
+1. **Локальный репозиторий-сервер (FastAPI):** Кэширует в локальной сети все Python `.whl` пакеты (собственный PEP 503 индекс), автономные дистрибутивы Julia, переносимые сборки Scilab/Octave и JSON-конфигурации профилей.
+2. **Терминальный клиент (C11 / ncursesw):** Предоставляет высокопроизводительный текстовый графический интерфейс для развёртывания стека в один клик, регистрации Jupyter-ядер и запуска рабочих тетрадей.
 
-Примеры профилей:
+---
 
-- `symbolic`
-- `numerical`
-- `scientific`
-- `minimal`
+## 2. Архитектура системы
 
-Пример структуры профиля:
+```mermaid
+flowchart TD
+    subgraph Client ["TUI-Клиент (C11 / ncursesw) — Студент"]
+        UI["Интерфейс ncursesw"]
+        PROC["Асинхронный Process Runner (Fork/Exec/Pipe)"]
+        ENV["Изолированные окружения: envs/<profile>/"]
+        TOOLS["Автономные бинарники: tools/julia, tools/scilab, tools/bin/"]
+        WS["Рабочие тетради: workspaces/"]
+    end
 
-```json
-{
-  "name": "symbolic",
-  "description": "Профиль для символьной математики",
-  "locked": true,
-  "python": ["sympy", "matplotlib", "jupyterlab"],
-  "julia": ["IJulia", "Symbolics"],
-  "system": [],
-  "kernels": ["python", "julia", "bash"]
-}
+    subgraph Server ["Сервер репозитория (FastAPI @ :8000) — Администратор"]
+        FASTAPI["FastAPI HTTP Daemon (Strict Read-Only)"]
+        PEP503["Локальный PyPI PEP 503 (/simple/)"]
+        ARTS["Хранилище артефактов (/artifacts/: julia, octave, scilab)"]
+        PROFS["Каталог профилей (/api/v1/profiles)"]
+        MIRROR["Служба зеркалирования (server/mirror.py)"]
+    end
+
+    UI -- "HTTP GET (Синхронизация профилей)" --> PROFS
+    PROC -- "pip --index-url (Локальные .whl)" --> PEP503
+    PROC -- "curl (Загрузка tar.gz / AppImage)" --> ARTS
+    MIRROR -.->|"Подготовка хранилища (в онлайне)"| Server
 ```
 
 ---
 
-# Что умеет система
+## 3. Профильная модель вычислений
 
-Платформа позволяет:
+Платформа оперирует не отдельными пакетами, а целостными математическими профилями:
 
-- устанавливать профильные environments;
-- устанавливать Python dependencies;
-- устанавливать Julia packages;
-- устанавливать Jupyter runtime;
-- регистрировать kernels;
-- запускать JupyterLab;
-- выполнять диагностику платформы;
-- проверять readiness профилей;
-- управлять workspace;
-- очищать kernels и runtime state;
-- работать с Octave и Scilab;
-- централизованно управлять вычислительной средой.
+| Профиль | Назначение | Состав стека |
+| :--- | :--- | :--- |
+| **`remote-base`** | Базовая среда | JupyterLab, numpy, pandas, matplotlib, IPython |
+| **`remote-scientific`** | Научный комплекс | Scipy, Sympy, Julia LTS + IJulia, Octave, Scilab |
+| **`remote-symbolic`** | Аналитические вычисления | Sympy, mpmath, Julia Symbolics, Jupyter |
+| **`remote-numerical`** | Численные методы | Scipy, Numba, GNU Octave + octave_kernel |
+| **`remote-ml`** | Машинное обучение | Scikit-learn, Seaborn, statsmodels, Torch-ready |
+| **`remote-stats`** | Прикладная статистика | Statsmodels, scipy.stats, seaborn, pingouin |
+| **`remote-diffeq`** | Дифференциальные уравнения | Scipy (integrate), Julia DifferentialEquations |
 
----
-
-# Архитектура платформы
-
-SysOpenMath построен по модульному принципу.
-
-Основные модули:
-
-```text
-src/
- ├── ui.c
- ├── profile_manager.c
- ├── diagnostics.c
- ├── jupyter_manager.c
- ├── julia_manager.c
- ├── octave_manager.c
- ├── scilab_manager.c
- ├── kernel_manager.c
- ├── logger.c
- └── workspace_manager.c
-```
-
-Каждый компонент отвечает за отдельную часть вычислительной платформы.
+Каждый профиль изолирован в собственном каталоге `envs/<имя_профиля>/` с отдельным набором ядер Jupyter.
 
 ---
 
-# Терминальный интерфейс
+## 4. Разграничение доступа (Студент vs Сервер)
 
-Платформа использует TUI-интерфейс на основе `ncurses`.
+Для предотвращения случайной или умышленной порчи серверного хранилища реализована 3-уровневая изоляция:
 
-Интерфейс включает:
-
-- splash-screen;
-- систему логирования;
-- меню управления;
-- экран диагностики;
-- экран установки;
-- управление профилями;
-- запуск JupyterLab.
-
-После запуска отображается splash-logo SysOpenMath.
+1. **Strict Read-Only REST API:** В `server/app.py` реализованы **только HTTP GET** эндпоинты. Сервер не имеет методов `POST`, `PUT`, `DELETE`. Попытка удалённо удалить или заменить файл вернёт `405 Method Not Allowed`.
+2. **Отдельный репозиторий студента:** Команда `make client-dist` формирует автономный клиентский дистрибутив `dist/sysopenmath-client/`. В нём **полностью удалены** папка `server/`, скрипты зеркалирования `mirror.py` и хранилище `storage/`.
+3. **Разграничение прав ОС:** Сервер запускается под системной службой администратора с правами `chmod 755`, а клиенты работают под непривилегированными пользователями.
 
 ---
 
-# Управление в интерфейсе
+## 5. Быстрый старт
 
-Основные клавиши:
+### Системные требования
+* **ОС:** Linux (Ubuntu 20.04/22.04/24.04 LTS, Debian 11/12, Astra Linux) или macOS
+* **Компилятор и библиотеки:** `gcc` (C11), `make`, `libncursesw5-dev`, `libcjson-dev`
+* **Python:** Python 3.8+ (со встроенным `venv`)
 
-- `Tab` — переключение между секциями;
-- `↑ / ↓` — навигация;
-- `Enter` — выполнение действия;
-- `←` или `Backspace` — возврат назад;
-- `PgUp / PgDn` — прокрутка логов;
-- `q` — выход из программы.
-
----
-
-# Система диагностики
-
-Платформа реализует централизованную систему диагностики.
-
-Диагностика разделяется на:
-
-## Платформенную диагностику
-
-Проверяет:
-
-- Python runtime;
-- Jupyter runtime;
-- системные зависимости;
-- структуру каталогов;
-- runtime-компоненты.
-
-## Профильную диагностику
-
-Проверяет исключительно компоненты активного профиля:
-
-- Python imports;
-- Julia packages;
-- kernels;
-- environment;
-- readiness профиля.
-
----
-
-# InstallStatus
-
-Для оценки состояния компонентов используется единая модель:
-
-```c
-typedef enum InstallStatus
-{
-    INSTALL_STATUS_READY,
-    INSTALL_STATUS_BROKEN,
-    INSTALL_STATUS_MISMATCH,
-    INSTALL_STATUS_NOT_INSTALLED,
-    INSTALL_STATUS_SKIP
-} InstallStatus;
-```
-
-## READY
-
-Компонент полностью готов.
-
-## BROKEN
-
-Компонент установлен, но повреждён или работает некорректно.
-
-## MISMATCH
-
-Обнаружена несовместимая версия.
-
-## NOT_INSTALLED
-
-Компонент отсутствует.
-
-## SKIP
-
-Компонент не используется активным профилем.
-
----
-
-# Проверка готовности среды
-
-Система поддерживает readiness-модель вычислительной среды.
-
-Проверяются:
-
-- virtual environment;
-- Python imports;
-- kernels;
-- JupyterLab;
-- runtime;
-- Julia packages;
-- системные зависимости.
-
-Пример логов:
-
-```text
-[INFO] Checking profile symbolic
-[OK] python import: sympy
-[OK] julia imports
-[SKIP] scilab not required
-[READY] profile symbolic
-```
-
----
-
-# JupyterLab Integration
-
-SysOpenMath автоматически:
-
-- запускает JupyterLab;
-- регистрирует kernels;
-- подготавливает workspace;
-- выводит URL подключения;
-- предотвращает повторный запуск.
-
-Пример:
-
-```text
-[INFO] JupyterLab started
-[INFO] URL: http://localhost:8888/lab?token=...
-```
-
----
-
-# Поддерживаемые kernels
-
-| Kernel | Статус |
-|---|---|
-| Python | Supported |
-| Julia | Supported |
-| Bash | Supported |
-| Octave | Supported |
-| Scilab | Experimental |
-
----
-
-# Работа с Octave
-
-После установки Octave система позволяет:
-
-- зарегистрировать Octave kernel;
-- использовать Octave внутри JupyterLab;
-- выполнять диагностику Octave environment.
-
-Проверка:
-
-```bash
-command -v octave
-octave --version | head -n 1
-```
-
----
-
-# Работа со Scilab
-
-После установки Scilab система позволяет:
-
-- зарегистрировать Scilab kernel;
-- использовать Scilab внутри JupyterLab;
-- выполнять проверку состояния Scilab.
-
-Проверка:
-
-```bash
-command -v scilab
-```
-
----
-
-# Workspace
-
-Платформа использует централизованное workspace.
-
-Структура:
-
-```text
-workspace/
- ├── notebooks/
- ├── profiles/
- ├── kernels/
- ├── logs/
- └── runtime/
-```
-
-Workspace используется для:
-
-- notebooks;
-- учебных материалов;
-- kernels;
-- runtime-конфигураций;
-- логов системы.
-
----
-
-# Установка
-
-## Зависимости Linux
-
-Ubuntu / Debian:
-
+### 1. Установка зависимостей сборки (Ubuntu / Debian)
 ```bash
 sudo apt update
-
-sudo apt install -y \
-    build-essential \
-    gcc \
-    make \
-    libncursesw5-dev \
-    libcjson-dev \
-    python3 \
-    python3-venv \
-    python3-pip \
-    curl \
+sudo apt install -y build-essential gcc make libncursesw5-dev libcjson-dev python3 python3-venv python3-pip curl
 ```
 
-Дополнительно:
-
+### 2. Запуск локального сервера репозитория
 ```bash
-sudo apt install octave
-sudo apt install scilab
+# Запуск демона FastAPI на http://127.0.0.1:8000
+make server
+```
+*Для остановки сервера:*
+```bash
+make server-stop
 ```
 
----
-
-# Сборка
-
+### 3. Сборка и запуск TUI-клиента
 ```bash
-make clean
 make
-```
-
-или:
-
-```bash
-gcc src/*.c -o manager -lncursesw -lcjson
-```
-
----
-
-# Запуск
-
-```bash
 ./manager
-```
-
-После запуска пользователь может:
-
-- выбрать профиль;
-- установить environment;
-- выполнить диагностику;
-- зарегистрировать kernels;
-- запустить JupyterLab.
-
----
-
-# Полезные команды
-
-## Проверка Jupyter
-
-```bash
-tools/bin/jupyter --version
-tools/bin/jupyter kernelspec list
-```
-
-## Проверка Julia
-
-```bash
-tools/bin/julia --version
-```
-
-## Проверка Python environment
-
-```bash
-envs/symbolic/bin/python --version
-envs/symbolic/bin/pip --version
-```
-
-## Проверка kernels
-
-```bash
-tools/bin/jupyter kernelspec list
+# или сразу:
+make run
 ```
 
 ---
 
-# Типичные проблемы
+## 6. Горячие клавиши TUI
 
-## JupyterLab не запускается
+| Клавиша | Действие |
+| :---: | :--- |
+| **`F1`** | Открыть интерактивное окно справки |
+| **`F2`** | Синхронизировать список профилей с локального сервера |
+| **`F3`** | **Полная установка (Full Setup)** активного профиля |
+| **`F4`** | Запуск диагностики окружения (Readiness Check) |
+| **`F5`** | **Запустить JupyterLab** со всеми активными ядрами |
+| **`F6`** | Открыть встроенный системный терминал |
+| **`F7`** | Очистить зарегистрированные ядра Jupyter |
+| **`F8`** | Сбросить/очистить виртуальное окружение профиля |
+| **`F9`** | Справочник по синтаксису математических языков |
+| **`F10`** | Выход из приложения |
+| **`O`** | Переключение режима **`[ОФЛАЙН]`** / **`[ОНЛАЙН]`** |
+| **`Enter`** | Выбрать профиль из списка |
+| **`Tab`** | Переключение фокуса (Список профилей / Окно лога / Детали) |
 
-Проверка:
+---
+
+## 7. Управление зеркалом и офлайн-сборками
+
+Администратор может предварительно подготовить все необходимые файлы перед отключением от интернета:
 
 ```bash
-tools/bin/jupyter --version
+# Проверить наличие артефактов в локальном хранилище
+make mirror-list
+
+# Загрузить автономный дистрибутив Julia LTS
+make mirror-julia
+
+# Загрузить переносимый дистрибутив Scilab с JRE
+make mirror-scilab
+
+# Загрузить runtime Jupyter и базовые пакеты
+make mirror-runtime
+
+# Скачать ВСЕ зависимости для всех 7 профилей разом:
+make mirror-all
+
+# Собрать готовый монолитный архив для переноса на флешке:
+make bundle
+# -> Создаёт sysopenmath-monolith-offline.tar.gz
+
+# Собрать отдельный безопасный клиентский дистрибутив для студентов:
+make client-dist
+# -> Создаёт каталог dist/sysopenmath-client/ и архив sysopenmath-client.tar.gz
 ```
 
 ---
 
-## Не отображается kernel
-
-Проверка:
-
-```bash
-tools/bin/jupyter kernelspec list
-```
-
----
-
-## Отсутствует profile environment
-
-Если отсутствует:
+## 8. Структура проекта
 
 ```text
-envs/<profile>/bin/python
+.
+├── Makefile                     # Сборка клиента, управление сервером и зеркалами
+├── manager.c                    # Точка входа C11 TUI
+├── config/
+│   └── client.json              # Сетевой адрес сервера и таймауты
+├── include/                     # Заголовочные файлы подсистем клиента
+├── src/                         # Реализация логики клиента (ncurses, managers)
+│   ├── actions.c                # Диспетчер действий горячих клавиш
+│   ├── install_steps.c          # Загрузка и развёртывание артефактов
+│   ├── setup_manager.c          # Атомарный генератор сценариев Full Setup
+│   ├── julia_manager.c          # Интеграция и верификация Julia LTS
+│   ├── octave_manager.c         # Интеграция GNU Octave
+│   ├── scilab_manager.c         # Интеграция Scilab
+│   ├── jupyter_manager.c        # Управление изолированным JupyterLab
+│   └── ui.c                     # Отрисовка TUI (адаптивный ncursesw)
+├── server/                      # Локальный сервер репозиториев
+│   ├── app.py                   # FastAPI REST API (Strict Read-Only)
+│   ├── mirror.py                # Утилита зеркалирования PyPI, Julia, Scilab
+│   ├── start.sh                 # Скрипт надёжного запуска uvicorn
+│   └── storage/                 # Локальное хранилище пакетов и профилей
+│       ├── artifacts/           # Бинарные архивы (.tar.gz, AppImage)
+│       ├── packages/            # Python .whl пакеты (PEP 503)
+│       └── profiles/            # JSON-декларации профилей
+└── dist/
+    └── sysopenmath-client/      # Выделенный изолированный репозиторий студента
 ```
 
-необходимо повторно установить профиль.
-
 ---
 
-## После удаления компонента kernel остался
-
-Следует выполнить:
-
-- очистку kernels;
-- повторную диагностику среды.
-
----
-
-# Принцип работы с профилями
-
-Пользователь не конструирует вычислительную платформу вручную.
-
-Профили рассматриваются как встроенные сценарии развёртывания, подготовленные разработчиком.
-
-Пользователь выбирает профиль, а система автоматически:
-
-- устанавливает зависимости;
-- создаёт environment;
-- подготавливает kernels;
-- конфигурирует JupyterLab;
-- выполняет диагностику готовности среды.
-
----
-
-# Roadmap
-
-Планируемые направления развития:
-
-- dependency graph;
-- auto-repair environments;
-- plugin-system;
-- cloud profiles;
-- GUI-interface;
-- JupyterHub integration;
-- educational workspace templates;
-- distributed scientific environments;
-- централизованные profile repositories.
-
----
-
-# Назначение проекта
-
-SysOpenMath создаётся как:
-
-- управляемая математическая среда;
-- образовательная вычислительная платформа;
-- scientific workspace;
-- система стандартизации вычислительных environments.
-
-Проект ориентирован на:
-
-- студентов;
-- преподавателей;
-- исследователей;
-- инженеров;
-- разработчиков scientific software.
-
----
-
-# Текущее состояние проекта
-
-Текущая версия включает:
-
-- профильную систему;
-- readiness diagnostics;
-- InstallStatus model;
-- автоматическую установку компонентов;
-- регистрацию kernels;
-- TUI-интерфейс;
-- splash-screen;
-- централизованное логирование;
-- запуск JupyterLab;
-- workspace management.
-
-Проект продолжает активно развиваться.
-
----
+## Лицензия
+Проект распространяется под открытой лицензией MIT. Подходит для использования в учебных заведениях, университетах и научно-исследовательских институтах.
