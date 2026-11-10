@@ -25,15 +25,23 @@ if [ ! -d "$VENV_DIR" ]; then
         echo "        sudo apt update && sudo apt install -y python3-venv"
         exit 1
     fi
-    echo "[INFO] Обновление pip и установка зависимостей..."
-    "$VENV_DIR/bin/pip" install --upgrade pip
-    "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
 fi
 
 # Проверка наличия uvicorn в venv
 if [ ! -x "$VENV_DIR/bin/uvicorn" ]; then
-    echo "[INFO] Установка зависимостей из requirements.txt..."
-    "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
+    echo "[INFO] Установка зависимостей сервера (fastapi, uvicorn)..."
+    # 1. Пробуем офлайн-установку из локального хранилища колёс
+    if [ -d "$SCRIPT_DIR/storage/packages" ] && "$VENV_DIR/bin/pip" install --no-index --find-links "$SCRIPT_DIR/storage/packages" -r "$SCRIPT_DIR/requirements.txt" 2>/dev/null; then
+        echo "[OK] Зависимости сервера установлены из локального кэша."
+    else
+        # 2. Если локально нет — пробуем из сети
+        echo "[INFO] Загрузка зависимостей сервера из сети..."
+        if ! "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"; then
+            echo "[ERROR] Не удалось установить fastapi/uvicorn."
+            echo "        Проверьте интернет-соединение или поместите .whl файлы в server/storage/packages/."
+            exit 1
+        fi
+    fi
 fi
 
 # Если порт уже занят предыдущим процессом — гарантированно освобождаем его
@@ -45,7 +53,7 @@ free_port() {
     # 2. Попробовать fuser по стандартным путям (включая /usr/sbin и /sbin)
     for fcmd in fuser /usr/sbin/fuser /sbin/fuser; do
         if command -v "$fcmd" &>/dev/null || [ -x "$fcmd" ]; then
-            "$fcmd" -k -9 "${p}/tcp" 2>/dev/null || true
+            "$fcmd" -k -9 "${p}/tcp" >/dev/null 2>&1 || true
             break
         fi
     done

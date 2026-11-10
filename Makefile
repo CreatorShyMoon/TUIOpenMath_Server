@@ -40,6 +40,13 @@ run: all
 clean:
 	rm -f $(TARGET)
 
+reset: clean
+	@rm -rf envs/* tools/* logs/* workspaces/* state/* 2>/dev/null || true
+	@touch envs/.gitkeep tools/.gitkeep logs/.gitkeep workspaces/.gitkeep state/.gitkeep
+	@rm -rf /tmp/sysopenmath_* /tmp/*.tar.gz /tmp/*.whl 2>/dev/null || true
+	@echo "[OK] Все виртуальные окружения, скачанные среды, ядра и логи очищены."
+	@echo "[OK] Проект сброшен до абсолютно чистого (заводского) состояния!"
+
 server:
 	@chmod +x server/start.sh
 	./server/start.sh
@@ -83,4 +90,4 @@ client-dist:
 	@echo "[OK] Клиентский дистрибутив сформирован: dist/sysopenmath-client/"
 	@echo "[OK] Архив для передачи пользователям: sysopenmath-client.tar.gz"
 
-.PHONY: all run clean server server-stop mirror-list mirror-sync mirror-all mirror-julia mirror-scilab mirror-octave mirror-runtime bundle client-dist
+.PHONY: all run clean reset server server-stop mirror-list mirror-sync mirror-all mirror-julia mirror-scilab mirror-octave mirror-runtime bundle client-dist

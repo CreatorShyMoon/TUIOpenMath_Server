@@ -163,6 +163,8 @@ def cmd_download_julia(args):
 
 
 CORE_JUPYTER_PACKAGES = [
+    "fastapi",
+    "uvicorn",
     "jupyterlab",
     "notebook",
     "ipykernel",
@@ -366,12 +368,37 @@ def cmd_download_octave(args):
 
 
 def cmd_bundle(args):
-    """Собрать полный автономный монолитный архив проекта."""
+    """Собрать полный автономный монолитный архив проекта со всеми исходниками и хранилищем."""
     root_dir = BASE_DIR.parent
     bundle_name = "sysopenmath-monolith-offline.tar.gz"
     bundle_path = root_dir / bundle_name
 
     print(f"[STEP] Сборка монолитного автономного дистрибутива в {bundle_name} ...")
+
+    # Гарантируем структуру каталогов с .gitkeep
+    for d in ["workspaces", "state", "logs", "tools", "envs", "profiles"]:
+        dp = root_dir / d
+        dp.mkdir(parents=True, exist_ok=True)
+        (dp / ".gitkeep").touch(exist_ok=True)
+
+    items_to_pack = [
+        "manager.c",
+        "src",
+        "include",
+        "server",
+        "config",
+        "profiles",
+        "Makefile",
+        "README.md",
+        "workspaces",
+        "state",
+        "logs",
+        "tools",
+        "envs",
+    ]
+    if (root_dir / "manager").is_file():
+        items_to_pack.append("manager")
+
     cmd = [
         "tar",
         "-czf",
@@ -379,21 +406,21 @@ def cmd_bundle(args):
         "--exclude=*.pyc",
         "--exclude=__pycache__",
         "--exclude=.git",
-        "--exclude=envs",
+        "--exclude=.DS_Store",
+        "--exclude=server/.venv",
+        "--exclude=envs/*",
         "--exclude=logs/*",
+        "--exclude=workspaces/*",
+        "--exclude=state/*",
+        "--exclude=tools/*",
         "--exclude=share/jupyter/runtime",
-        "manager",
-        "server",
-        "config",
-        "profiles",
-        "Makefile",
-        "PATCH_NOTES.md",
+        *items_to_pack,
     ]
     try:
         subprocess.run(cmd, cwd=root_dir, check=True)
         sz_mb = bundle_path.stat().st_size / (1024 * 1024)
         print(f"[OK] Монолитный дистрибутив успешно собран: {bundle_name} ({sz_mb:.1f} MB)")
-        print("     Архив можно скопировать на любой офлайн-компьютер, распаковать и запустить!")
+        print("     Архив содержит ВСЕ исходники (.c/.h), сервер и пакеты для автономного запуска!")
         return 0
     except Exception as e:
         print(f"[ERROR] Ошибка при создании архива: {e}")

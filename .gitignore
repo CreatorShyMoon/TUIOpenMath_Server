@@ -33,6 +33,7 @@ server/storage/packages/*
 !server/storage/packages/.gitkeep
 server/__pycache__/
 *.pyc
+server/.venv/
 
 # Temporary scratch
 scratch/*
